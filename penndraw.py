@@ -130,9 +130,9 @@ def __ellipse(x: float, y: float, a: float, b: float, filled: bool):
             "Invalid ellipse size: width and height must be positive.")
 
     if not filled:
-        return UnfilledEllipse(x_scaled, y_scaled, a_scaled, b_scaled, color, BATCH)
+        return UnfilledEllipse(x_scaled, y_scaled, a_scaled, b_scaled, color=color, batch=BATCH)
     else:
-        return pg.shapes.Ellipse(x_scaled, y_scaled, a_scaled, b_scaled, color, BATCH)
+        return pg.shapes.Ellipse(x_scaled, y_scaled, a_scaled, b_scaled, color=color, batch=BATCH)
 
 
 def ellipse(x: float, y: float, a: float, b: float):
@@ -143,9 +143,47 @@ def filled_ellipse(x: float, y: float, a: float, b: float):
     __ellipse(x, y, a, b, True)
 
 
-@keep
 def circle(x: float, y: float, radius: float):
-    return __ellipse(x, y, radius, radius, False)
+    __ellipse(x, y, radius, radius, False)
+
+
+def filled_circle(x: float, y: float, radius: float):
+    __ellipse(x, y, radius, radius, True)
+
+
+@keep
+def __rectangle(x: float, y: float, half_width: float, half_height: float, filled: bool):
+
+    w_scaled = factor_x(half_width)
+    h_scaled = factor_y(half_height)
+    x_scaled = scale_x(x) - w_scaled
+    y_scaled = scale_y(y) - h_scaled
+    print(w_scaled, h_scaled, x_scaled, y_scaled)
+
+    if (w_scaled < 1 or h_scaled < 1):
+        raise ValueError(
+            "Invalid rectangle size: half_width and half_height must be positive.")
+
+    if not filled:
+        return UnfilledRectangle(x_scaled, y_scaled, 2 * w_scaled, 2 * h_scaled, color=color, batch=BATCH)
+    else:
+        return pg.shapes.Rectangle(x_scaled, y_scaled, 2 * w_scaled, 2 * h_scaled, color=color, batch=BATCH)
+
+
+def rectangle(x: float, y: float, half_width: float, half_height: float):
+    __rectangle(x, y, half_width, half_height, False)
+
+
+def filled_rectangle(x: float, y: float, half_width: float, half_height: float):
+    __rectangle(x, y, half_width, half_height, True)
+
+
+def square(x: float, y: float, half_side_length: float):
+    __rectangle(x, y, half_side_length, half_side_length, False)
+
+
+def filled_square(x: float, y: float, half_side_length: float):
+    __rectangle(x, y, half_side_length, half_side_length, True)
 
 
 @window.event
