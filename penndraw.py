@@ -186,6 +186,20 @@ def filled_square(x: float, y: float, half_side_length: float):
     __rectangle(x, y, half_side_length, half_side_length, True)
 
 
+@keep
+def __line(x1: float, y1: float, x2: float, y2: float):
+    x1_scaled = scale_x(x1)
+    y1_scaled = scale_y(y1)
+    x2_scaled = scale_x(x2)
+    y2_scaled = scale_y(y2)
+
+    return pg.shapes.Line(x1_scaled, y1_scaled, x2_scaled, y2_scaled, color=color, batch=BATCH)
+
+
+def line(x1: float, y1: float, x2: float, y2: float):
+    __line(x1, y1, x2, y2)
+
+
 @window.event
 def on_draw():
     window.clear()
