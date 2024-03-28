@@ -36,23 +36,6 @@ def set_canvas_size(w: int, h: int):
     set_scale(x_min, x_max)
 
 
-# @dispatch(tuple)
-# def set_pen_color(c: tuple[int]):
-#     global color
-#     if not (3 <= len(c) <= 4) or not all(isinstance(x, int) and 0 <= x <= 255 for x in color):
-#         raise ValueError(
-#             "Invalid color tuple: must have 3 integer components between 0-255.")
-#     color = color
-
-
-# @dispatch(int, int, int)
-# def set_pen_color(r: int, g: int, b: int):
-#     if not all(isinstance(x, int) and 0 <= x <= 255 for x in (r, g, b)):
-#         raise ValueError(
-#             "Invalid colors: must have 3 integer components between 0-255.")
-#     color = (r, g, b)
-
-
 def set_pen_radius(r: float):
     global pen_radius
     if not isinstance(r, (int, float)):
@@ -130,6 +113,13 @@ def scaled_pen_radius() -> float:
 def keep(f):
     def wrapper(*args, **kwargs):
         VERTICES.append(f(*args, **kwargs))
+    return wrapper
+
+
+def scale_inputs(f):
+    def wrapper(*args, **kwargs):
+        print(*_scale_points(*args))
+        return f(*_scale_points(*args), **kwargs)
     return wrapper
 
 
@@ -223,6 +213,30 @@ def __line(x1: float, y1: float, x2: float, y2: float):
 
 def line(x1: float, y1: float, x2: float, y2: float):
     __line(x1, y1, x2, y2)
+
+
+def _scale_points(*points):
+    return (scale_x(p) if i % 2 == 0 else scale_y(p) for (i, p) in enumerate(points))
+
+
+@keep
+@scale_inputs
+def filled_polygon(*points):
+    if len(points) % 2 != 0:
+        raise ValueError(
+            "Invalid polygon: must provide an even number of points.")
+    zipped_points = zip(points[::2], points[1::2])
+    return pg.shapes.Polygon(*zipped_points, color=color, batch=BATCH)
+
+
+@keep
+@scale_inputs
+def polygon(*points):
+    if len(points) % 2 != 0:
+        raise ValueError(
+            "Invalid polygon: must provide an even number of points.")
+    zipped_points = zip(points[::2], points[1::2])
+    return pg.shapes.MultiLine(*zipped_points, color=color, thickness=scaled_pen_radius(), batch=BATCH, closed=True)
 
 
 @window.event
