@@ -188,6 +188,8 @@ def __rectangle(x: float, y: float, half_width: float, half_height: float, fille
                                w_scaled, 2 * h_scaled, color=color, batch=BATCH)
         paired = [[a + x_scaled, b + y_scaled] for a, b in zip(
             _r._get_vertices()[::2], _r._get_vertices()[1::2])]
+        # add a repeat of the second vertex to avoid the weird line cap issue
+        paired.append(paired[1])
         return pg.shapes.MultiLine(*paired, thickness=scaled_pen_radius(), closed=True, color=color, batch=BATCH)
     else:
         return pg.shapes.Rectangle(x_scaled, y_scaled, 2 * w_scaled, 2 * h_scaled, color=color, batch=BATCH)
