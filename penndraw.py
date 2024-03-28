@@ -18,6 +18,7 @@ x_scale: float = width / (x_max - x_min)
 y_scale: float = height / (y_max - y_min)
 window: pg.window.Window = pg.window.Window(width, height)
 color: tuple[int, int, int, int] = (255, 255, 255, 255)
+pen_radius: float = 0.002
 
 
 def run():
@@ -50,6 +51,16 @@ def set_canvas_size(w: int, h: int):
 #         raise ValueError(
 #             "Invalid colors: must have 3 integer components between 0-255.")
 #     color = (r, g, b)
+
+
+def set_pen_radius(r: float):
+    global pen_radius
+    if not isinstance(r, (int, float)):
+        raise TypeError(
+            "Invalid pen radius: must be a number between 0 and 1")
+    if r <= 0:
+        raise ValueError("Invalid pen radius: must be positive.")
+    pen_radius = r
 
 
 def set_pen_color(*args):
@@ -112,6 +123,10 @@ def factor_y(h: float) -> float:
     return h * height / abs(y_max - y_min)
 
 
+def scaled_pen_radius() -> float:
+    return pen_radius * width
+
+
 def keep(f):
     def wrapper(*args, **kwargs):
         VERTICES.append(f(*args, **kwargs))
@@ -130,7 +145,11 @@ def __ellipse(x: float, y: float, a: float, b: float, filled: bool):
             "Invalid ellipse size: width and height must be positive.")
 
     if not filled:
-        return UnfilledEllipse(x_scaled, y_scaled, a_scaled, b_scaled, color=color, batch=BATCH)
+        _e = UnfilledEllipse(x_scaled, y_scaled, a_scaled,
+                             b_scaled, color=color, batch=BATCH)
+        paired = [[a + x_scaled, b + y_scaled] for a, b in zip(
+            _e._get_vertices()[::2], _e._get_vertices()[1::2])]
+        return pg.shapes.MultiLine(*paired, thickness=scaled_pen_radius(), closed=True, color=color, batch=BATCH)
     else:
         return pg.shapes.Ellipse(x_scaled, y_scaled, a_scaled, b_scaled, color=color, batch=BATCH)
 
@@ -165,7 +184,11 @@ def __rectangle(x: float, y: float, half_width: float, half_height: float, fille
             "Invalid rectangle size: half_width and half_height must be positive.")
 
     if not filled:
-        return UnfilledRectangle(x_scaled, y_scaled, 2 * w_scaled, 2 * h_scaled, color=color, batch=BATCH)
+        _r = UnfilledRectangle(x_scaled, y_scaled, 2 *
+                               w_scaled, 2 * h_scaled, color=color, batch=BATCH)
+        paired = [[a + x_scaled, b + y_scaled] for a, b in zip(
+            _r._get_vertices()[::2], _r._get_vertices()[1::2])]
+        return pg.shapes.MultiLine(*paired, thickness=scaled_pen_radius(), closed=True, color=color, batch=BATCH)
     else:
         return pg.shapes.Rectangle(x_scaled, y_scaled, 2 * w_scaled, 2 * h_scaled, color=color, batch=BATCH)
 
@@ -193,7 +216,7 @@ def __line(x1: float, y1: float, x2: float, y2: float):
     x2_scaled = scale_x(x2)
     y2_scaled = scale_y(y2)
 
-    return pg.shapes.Line(x1_scaled, y1_scaled, x2_scaled, y2_scaled, color=color, batch=BATCH)
+    return pg.shapes.Line(x1_scaled, y1_scaled, x2_scaled, y2_scaled, width=scaled_pen_radius(), color=color, batch=BATCH)
 
 
 def line(x1: float, y1: float, x2: float, y2: float):
