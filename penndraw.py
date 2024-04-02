@@ -1,5 +1,4 @@
 import pyglet as pg
-from multipledispatch import dispatch
 from unfilled_shapes import *
 
 DEFAULT_SIZE: int = 512
@@ -8,6 +7,22 @@ DEFAULT_MAX_COORD: float = 1.0
 BATCH: pg.graphics.Batch = pg.graphics.Batch()
 VERTICES: list = []
 BORDER: float = 0.0
+
+BLACK: tuple[int, int, int, int] = (0, 0, 0, 255)
+WHITE: tuple[int, int, int, int] = (255, 255, 255, 255)
+RED: tuple[int, int, int, int] = (255, 0, 0, 255)
+GREEN: tuple[int, int, int, int] = (0, 255, 0, 255)
+BLUE: tuple[int, int, int, int] = (0, 0, 255, 255)
+YELLOW: tuple[int, int, int, int] = (255, 255, 0, 255)
+CYAN: tuple[int, int, int, int] = (0, 255, 255, 255)
+MAGENTA: tuple[int, int, int, int] = (255, 0, 255, 255)
+DARK_GRAY: tuple[int, int, int, int] = (64, 64, 64, 255)
+GRAY: tuple[int, int, int, int] = (128, 128, 128, 255)
+LIGHT_GRAY: tuple[int, int, int, int] = (192, 192, 192, 255)
+ORANGE: tuple[int, int, int, int] = (255, 200, 0, 255)
+PINK: tuple[int, int, int, int] = (255, 175, 175, 255)
+
+
 height: int = DEFAULT_SIZE
 width: int = DEFAULT_SIZE
 x_min: float = DEFAULT_MIN_COORD
@@ -26,6 +41,10 @@ def run():
 
 
 def set_canvas_size(w: int, h: int):
+    """Set the size of the canvas to the specified width and height in pixels.
+    Raises a ValueError if the width or height is less than 1.
+    """
+
     global width, height
     if (w < 1 or h < 1):
         raise ValueError(
@@ -37,22 +56,28 @@ def set_canvas_size(w: int, h: int):
 
 
 def set_pen_radius(r: float):
-    global pen_radius
+    """Set the radius of the pen to the specified width. The default width is 0.002.
+    Raises a ValueError if the radius is negative.
+    Raises a TypeError if the radius is not a number.
+    """
     if not isinstance(r, (int, float)):
         raise TypeError(
             "Invalid pen radius: must be a number between 0 and 1")
     if r <= 0:
         raise ValueError("Invalid pen radius: must be positive.")
+    global pen_radius
     pen_radius = r
 
 
 def set_pen_color(*args):
-    """set_pen_color(r: int, g: int, b: int) -> None
+    """Set the color of the pen to the specified RGB or RGBA color.
+
+    Usages:
+    set_pen_color(r: int, g: int, b: int) -> None
     set_pen_color(r: int, g: int, b: int, a: int) -> None
     set_pen_color(color: tuple[int, int, int]) -> None
     set_pen_color(color: tuple[int, int, int, int]) -> None
 
-    Set the color of the pen to the specified RGB or RGBA color.
     Raises a ValueError if the color is invalid.
     """
     global color
@@ -75,6 +100,9 @@ def set_pen_color(*args):
 
 
 def set_scale(min_c: float, max_c: float):
+    """Set the scale of the canvas to the specified minimum and maximum coordinates.
+    """
+
     global x_min, x_max, y_min, y_max
     size = max_c - min_c
     x_min = min_c - BORDER * size
@@ -118,7 +146,6 @@ def keep(f):
 
 def scale_inputs(f):
     def wrapper(*args, **kwargs):
-        print(*_scale_points(*args))
         return f(*_scale_points(*args), **kwargs)
     return wrapper
 
@@ -167,7 +194,6 @@ def __rectangle(x: float, y: float, half_width: float, half_height: float, fille
     h_scaled = factor_y(half_height)
     x_scaled = scale_x(x) - w_scaled
     y_scaled = scale_y(y) - h_scaled
-    print(w_scaled, h_scaled, x_scaled, y_scaled)
 
     if (w_scaled < 1 or h_scaled < 1):
         raise ValueError(
