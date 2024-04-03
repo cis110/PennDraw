@@ -1,8 +1,8 @@
 """
-On a canvas of size 500x500, draw three unfilled ellipses of different colors.
-1. A green circle in the bottom left corner.
-2. A red vertical ellipse in the middle.
-3. A low-opacity blue horizontal ellipse in the top right corner.
+On a canvas of size 500x500, draw some stuff. Then, clear to white.
+Then, draw another ellipse. The screen should have only the last ellipse.
+Also, the color of the last ellipse should be drawn using the previous
+color setting, which is blue.
 """
 
 import penndraw as pd
@@ -15,5 +15,7 @@ pd.ellipse(0.5, 0.5, 0.15, 0.25)  # a vertical ellipse
 pd.set_pen_color(0, 0, 255, 100)
 pd.ellipse(0.75, 0.75, 0.25, 0.15)  # a horizontal ellipse
 
+pd.clear()
 
+pd.ellipse(0.75, 0.75, 0.25, 0.15)  # a horizontal ellipse
 pd.run()

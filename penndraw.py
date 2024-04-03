@@ -22,6 +22,15 @@ LIGHT_GRAY: tuple[int, int, int, int] = (192, 192, 192, 255)
 ORANGE: tuple[int, int, int, int] = (255, 200, 0, 255)
 PINK: tuple[int, int, int, int] = (255, 175, 175, 255)
 
+HSS_BLUE: tuple[int, int, int] = (31, 119, 180)
+HSS_ORANGE: tuple[int, int, int] = (255, 126, 14)
+HSS_RED: tuple[int, int, int] = (219, 49, 34)
+HSS_YELLOW: tuple[int, int, int] = (255, 219, 128)
+
+TQM_NAVY: tuple[int, int, int] = (0, 51, 102)
+TQM_BLUE: tuple[int, int, int] = (24, 123, 205)
+TQM_WHITE: tuple[int, int, int] = (245, 240, 236)
+
 
 height: int = DEFAULT_SIZE
 width: int = DEFAULT_SIZE
@@ -81,19 +90,23 @@ def set_pen_color(*args):
     Raises a ValueError if the color is invalid.
     """
     global color
+    color = validate_color(args)
+
+
+def validate_color(args):
     if len(args) == 1:
         if not isinstance(args[0], tuple) or len(args[0]) not in (3, 4) or not all(isinstance(x, int) and 0 <= x <= 255 for x in args[0]):
             raise ValueError(
                 "Invalid color: input tuple must consist of 3 or 4 integers between 0-255.")
         if len(args[0]) == 3:
-            color = args[0] + (255,)
+            return args[0] + (255,)
         else:
-            color = args[0]
+            return args[0]
     elif len(args) in (3, 4):
         if not all(isinstance(x, int) and 0 <= x <= 255 for x in args):
             raise ValueError(
                 "Invalid colors: must have 3 or 4 integer components between 0-255.")
-        color = args
+        return args
     else:
         raise ValueError(
             "Invalid number of arguments. Must provide a color in RGB or RGBA format.")
@@ -148,6 +161,20 @@ def scale_inputs(f):
     def wrapper(*args, **kwargs):
         return f(*_scale_points(*args), **kwargs)
     return wrapper
+
+
+def clear(*args):
+    """Clear the canvas to a given color.
+    """
+    global color
+    old_color = color
+    color = WHITE if not args else validate_color(args)
+    for shape in VERTICES:
+        shape.delete()
+    VERTICES.clear()
+    filled_rectangle((x_min + x_max) / 2, abs(y_min + y_max) / 2,
+                     (x_max - x_min) / 2, abs(y_max - y_min) / 2)
+    color = old_color
 
 
 @keep
