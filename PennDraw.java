@@ -1713,34 +1713,7 @@ public final class PennDraw implements ActionListener, MouseListener, MouseMotio
      * Test client.
      */
     public static void main(String[] args) {
-        PennDraw.square(.2, .8, .1);
-        PennDraw.setPenWidthInPoints(12);
-        PennDraw.rectangle(.2, .8, .1, .2, 10);
-        PennDraw.setPenRadius();
-        PennDraw.filledRectangle(.8, .8, .2, .1, 10);
-        PennDraw.circle(.8, .2, .2);
-        PennDraw.filledEllipse(.8, .2, .2, .1, 10);
-
-        PennDraw.setPenColor(PennDraw.BOOK_RED);
-        PennDraw.setPenRadius(.02);
-        PennDraw.arc(.8, .2, .1, 200, 45);
-
-        // draw a blue diamond
-        PennDraw.setPenRadius();
-        PennDraw.setPenColor(PennDraw.BOOK_BLUE);
-        double[] x = { .1, .2, .3, .2 };
-        double[] y = { .2, .3, .2, .1 };
-        PennDraw.polyline(x, y);
-        PennDraw.filledPolygon(.1, .2, .2, .3, .3, .2);
-
-        // text
-        PennDraw.setFontSize(12);
-        PennDraw.setPenColor(PennDraw.BLACK);
-        PennDraw.text(0.2, 0.5, "black text");
-        PennDraw.text(0.2, 0.5, "black text", 30);
-        PennDraw.setFont("Serif");
-        PennDraw.setPenColor(PennDraw.WHITE);
-        PennDraw.text(0.8, 0.8, "white serif text");
+        PennDraw.listFonts();
     }
 
 }

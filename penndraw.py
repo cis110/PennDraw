@@ -1,4 +1,6 @@
 import pyglet as pg
+from dataclasses import dataclass
+
 from unfilled_shapes import *
 
 DEFAULT_SIZE: int = 512
@@ -43,6 +45,19 @@ y_scale: float = height / (y_max - y_min)
 window: pg.window.Window = pg.window.Window(width, height)
 color: tuple[int, int, int, int] = (255, 255, 255, 255)
 pen_radius: float = 0.002
+
+DEFAULT_FONT_NAME: str = "SansSerif"
+DEFAULT_FONT_SIZE: float = 12
+
+
+@dataclass
+class FontProperties:
+    """Stores all of the current font properties."""
+    name: str = DEFAULT_FONT_NAME
+    size: float = DEFAULT_FONT_SIZE
+
+
+font = FontProperties()
 
 
 def run():
@@ -90,10 +105,53 @@ def set_pen_color(*args):
     Raises a ValueError if the color is invalid.
     """
     global color
-    color = validate_color(args)
+    color = _validate_color(args)
 
 
-def validate_color(args):
+def set_font(*args):
+    """Set the font to the specified font name, or reset to the default font if no font is specified.
+
+    Input must be a valid font name.
+    Raises a TypeError if the input is not a string.
+    Raises a ValueError if the font is not found.
+    """
+    global font
+    if len(args) == 0:
+        font.name = DEFAULT_FONT_NAME
+    elif not isinstance(args[0], str):
+        raise TypeError("Invalid font: must be a string.")
+    elif not pg.font.have_font(args[0]):
+        raise ValueError("Invalid font: must be a valid font name.")
+    font.name = args[0]
+
+
+def get_font() -> str:
+    """Return the current font.
+    """
+    return font.name
+
+
+def list_fonts():
+    """List all available fonts.
+
+    Raises a NotImplementedError for now. IDK how to do
+    this with pyglet; may need to think about it differently.
+    """
+    raise NotImplementedError("Not yet implemented. 🤷"
+                              )
+
+
+def set_font_size(pointSize: float):
+    """Set the font size to the specified point size.
+
+    Raises a ValueError if the point size is less than 1.
+    """
+    if pointSize < 0:
+        raise ValueError("Invalid font size: must be non-negative.")
+    font.size = pointSize
+
+
+def _validate_color(args):
     if len(args) == 1:
         if not isinstance(args[0], tuple) or len(args[0]) not in (3, 4) or not all(isinstance(x, int) and 0 <= x <= 255 for x in args[0]):
             raise ValueError(
@@ -122,32 +180,32 @@ def set_scale(min_c: float, max_c: float):
     x_max = max_c + BORDER * size
     y_min = min_c - BORDER * size
     y_max = max_c + BORDER * size
-    set_transform()
+    _set_transform()
 
 
-def set_transform():
+def _set_transform():
     global x_scale, y_scale
     x_scale = width / (x_max - x_min)
     y_scale = height / (y_max - y_min)
 
 
-def scale_x(x: float) -> float:
+def _scale_x(x: float) -> float:
     return (x - x_min) * x_scale
 
 
-def scale_y(y: float) -> float:
+def _scale_y(y: float) -> float:
     return (y - y_min) * y_scale
 
 
-def factor_x(w: float) -> float:
+def _factor_x(w: float) -> float:
     return w * width / abs(x_max - x_min)
 
 
-def factor_y(h: float) -> float:
+def _factor_y(h: float) -> float:
     return h * height / abs(y_max - y_min)
 
 
-def scaled_pen_radius() -> float:
+def _scaled_pen_radius() -> float:
     return pen_radius * width
 
 
@@ -168,7 +226,7 @@ def clear(*args):
     """
     global color
     old_color = color
-    color = WHITE if not args else validate_color(args)
+    color = WHITE if not args else _validate_color(args)
     for shape in VERTICES:
         shape.delete()
     VERTICES.clear()
@@ -179,10 +237,10 @@ def clear(*args):
 
 @keep
 def __ellipse(x: float, y: float, a: float, b: float, filled: bool):
-    x_scaled = scale_x(x)
-    y_scaled = scale_y(y)
-    a_scaled = factor_x(a)
-    b_scaled = factor_y(b)
+    x_scaled = _scale_x(x)
+    y_scaled = _scale_y(y)
+    a_scaled = _factor_x(a)
+    b_scaled = _factor_y(b)
 
     if (a_scaled < 1 or b_scaled < 1):
         raise ValueError(
@@ -193,7 +251,7 @@ def __ellipse(x: float, y: float, a: float, b: float, filled: bool):
                              b_scaled, color=color, batch=BATCH)
         paired = [[a + x_scaled, b + y_scaled] for a, b in zip(
             _e._get_vertices()[::2], _e._get_vertices()[1::2])]
-        return pg.shapes.MultiLine(*paired, thickness=scaled_pen_radius(), closed=True, color=color, batch=BATCH)
+        return pg.shapes.MultiLine(*paired, thickness=_scaled_pen_radius(), closed=True, color=color, batch=BATCH)
     else:
         return pg.shapes.Ellipse(x_scaled, y_scaled, a_scaled, b_scaled, color=color, batch=BATCH)
 
@@ -217,10 +275,10 @@ def filled_circle(x: float, y: float, radius: float):
 @keep
 def __rectangle(x: float, y: float, half_width: float, half_height: float, filled: bool):
 
-    w_scaled = factor_x(half_width)
-    h_scaled = factor_y(half_height)
-    x_scaled = scale_x(x) - w_scaled
-    y_scaled = scale_y(y) - h_scaled
+    w_scaled = _factor_x(half_width)
+    h_scaled = _factor_y(half_height)
+    x_scaled = _scale_x(x) - w_scaled
+    y_scaled = _scale_y(y) - h_scaled
 
     if (w_scaled < 1 or h_scaled < 1):
         raise ValueError(
@@ -233,7 +291,7 @@ def __rectangle(x: float, y: float, half_width: float, half_height: float, fille
             _r._get_vertices()[::2], _r._get_vertices()[1::2])]
         # add a repeat of the second vertex to avoid the weird line cap issue
         paired.append(paired[1])
-        return pg.shapes.MultiLine(*paired, thickness=scaled_pen_radius(), closed=True, color=color, batch=BATCH)
+        return pg.shapes.MultiLine(*paired, thickness=_scaled_pen_radius(), closed=True, color=color, batch=BATCH)
     else:
         return pg.shapes.Rectangle(x_scaled, y_scaled, 2 * w_scaled, 2 * h_scaled, color=color, batch=BATCH)
 
@@ -256,12 +314,12 @@ def filled_square(x: float, y: float, half_side_length: float):
 
 @keep
 def __line(x1: float, y1: float, x2: float, y2: float):
-    x1_scaled = scale_x(x1)
-    y1_scaled = scale_y(y1)
-    x2_scaled = scale_x(x2)
-    y2_scaled = scale_y(y2)
+    x1_scaled = _scale_x(x1)
+    y1_scaled = _scale_y(y1)
+    x2_scaled = _scale_x(x2)
+    y2_scaled = _scale_y(y2)
 
-    return pg.shapes.Line(x1_scaled, y1_scaled, x2_scaled, y2_scaled, width=scaled_pen_radius(), color=color, batch=BATCH)
+    return pg.shapes.Line(x1_scaled, y1_scaled, x2_scaled, y2_scaled, width=_scaled_pen_radius(), color=color, batch=BATCH)
 
 
 def line(x1: float, y1: float, x2: float, y2: float):
@@ -269,7 +327,7 @@ def line(x1: float, y1: float, x2: float, y2: float):
 
 
 def _scale_points(*points):
-    return (scale_x(p) if i % 2 == 0 else scale_y(p) for (i, p) in enumerate(points))
+    return (_scale_x(p) if i % 2 == 0 else _scale_y(p) for (i, p) in enumerate(points))
 
 
 @keep
@@ -289,7 +347,7 @@ def polygon(*points):
         raise ValueError(
             "Invalid polygon: must provide an even number of points.")
     zipped_points = zip(points[::2], points[1::2])
-    return pg.shapes.MultiLine(*zipped_points, color=color, thickness=scaled_pen_radius(), batch=BATCH, closed=True)
+    return pg.shapes.MultiLine(*zipped_points, color=color, thickness=_scaled_pen_radius(), batch=BATCH, closed=True)
 
 
 @window.event
