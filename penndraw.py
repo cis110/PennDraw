@@ -42,7 +42,9 @@ y_min: float = DEFAULT_MIN_COORD
 y_max: float = DEFAULT_MAX_COORD
 x_scale: float = width / (x_max - x_min)
 y_scale: float = height / (y_max - y_min)
-window: pg.window.Window = pg.window.Window(width, height)
+
+window: pg.window.Window = pg.window.Window(width, height, config=pg.gl.Config(
+    double_buffer=True, sample_buffers=1, samples=2))
 color: tuple[int, int, int, int] = (255, 255, 255, 255)
 pen_radius: float = 0.002
 
@@ -137,8 +139,7 @@ def list_fonts():
     Raises a NotImplementedError for now. IDK how to do
     this with pyglet; may need to think about it differently.
     """
-    raise NotImplementedError("Not yet implemented. 🤷"
-                              )
+    raise NotImplementedError("Not yet implemented. 🤷")
 
 
 def set_font_size(pointSize: float):
@@ -241,6 +242,7 @@ def __ellipse(x: float, y: float, a: float, b: float, filled: bool):
     y_scaled = _scale_y(y)
     a_scaled = _factor_x(a)
     b_scaled = _factor_y(b)
+    segments = max(50, int(max(a_scaled, b_scaled) / 1.25))
 
     if (a_scaled < 1 or b_scaled < 1):
         raise ValueError(
@@ -248,12 +250,12 @@ def __ellipse(x: float, y: float, a: float, b: float, filled: bool):
 
     if not filled:
         _e = UnfilledEllipse(x_scaled, y_scaled, a_scaled,
-                             b_scaled, color=color, batch=BATCH)
+                             b_scaled, segments, color, batch=BATCH)
         paired = [[a + x_scaled, b + y_scaled] for a, b in zip(
             _e._get_vertices()[::2], _e._get_vertices()[1::2])]
         return pg.shapes.MultiLine(*paired, thickness=_scaled_pen_radius(), closed=True, color=color, batch=BATCH)
     else:
-        return pg.shapes.Ellipse(x_scaled, y_scaled, a_scaled, b_scaled, color=color, batch=BATCH)
+        return pg.shapes.Ellipse(x_scaled, y_scaled, a_scaled, b_scaled, color=color, batch=BATCH, segments=50)
 
 
 def ellipse(x: float, y: float, a: float, b: float):
@@ -348,6 +350,21 @@ def polygon(*points):
             "Invalid polygon: must provide an even number of points.")
     zipped_points = zip(points[::2], points[1::2])
     return pg.shapes.MultiLine(*zipped_points, color=color, thickness=_scaled_pen_radius(), batch=BATCH, closed=True)
+
+
+@keep
+def text(x: float, y: float, s: str, angle: float = 0.0, orientation: str = "center") -> pg.text.Label:
+    x_scaled = _scale_x(x)
+    y_scaled = _scale_y(y)
+    return pg.text.Label(s, font_name=font.name, font_size=font.size, rotation=angle, x=x_scaled, y=y_scaled, color=color, batch=BATCH, anchor_x=orientation, anchor_y='center')
+
+
+def text_left(x: float, y: float, s: str, angle: float = 0.0):
+    text(x, y, s, orientation='left')
+
+
+def text_right(x: float, y: float, s: str, angle: float = 0.0):
+    text(x, y, s, orientation='right')
 
 
 @window.event

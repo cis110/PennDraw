@@ -30,9 +30,10 @@ class UnfilledRectangle(shapes.Rectangle):
 
 
 class UnfilledEllipse(shapes.Ellipse):
-    def __init__(self, x, y, a, b, color, batch=None):
+    def __init__(self, x, y, a, b, segments, color, batch=None):
         self._draw_mode = gl.GL_LINES
-        super().__init__(x, y, a, b, color=color, batch=batch)
+        super().__init__(x, y, a, b, color=color, batch=batch,
+                         segments=segments)
         self._num_verts = self._segments * 2
 
     def _create_vertex_list(self):
