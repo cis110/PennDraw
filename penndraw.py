@@ -1,11 +1,15 @@
 import pyglet as pg
 from dataclasses import dataclass
+from typing import Optional
 
 from unfilled_shapes import *
 
 DEFAULT_SIZE: int = 512
 DEFAULT_MIN_COORD: float = 0.0
 DEFAULT_MAX_COORD: float = 1.0
+height: int = DEFAULT_SIZE
+width: int = DEFAULT_SIZE
+window: pg.window.Window = pg.window.Window(width, height)
 BATCH: pg.graphics.Batch = pg.graphics.Batch()
 VERTICES: list = []
 BORDER: float = 0.0
@@ -34,8 +38,6 @@ TQM_BLUE: tuple[int, int, int] = (24, 123, 205)
 TQM_WHITE: tuple[int, int, int] = (245, 240, 236)
 
 
-height: int = DEFAULT_SIZE
-width: int = DEFAULT_SIZE
 x_min: float = DEFAULT_MIN_COORD
 x_max: float = DEFAULT_MAX_COORD
 y_min: float = DEFAULT_MIN_COORD
@@ -43,8 +45,6 @@ y_max: float = DEFAULT_MAX_COORD
 x_scale: float = width / (x_max - x_min)
 y_scale: float = height / (y_max - y_min)
 
-window: pg.window.Window = pg.window.Window(width, height, config=pg.gl.Config(
-    double_buffer=True, sample_buffers=1, samples=2))
 color: tuple[int, int, int, int] = (255, 255, 255, 255)
 pen_radius: float = 0.002
 
@@ -365,6 +365,29 @@ def text_left(x: float, y: float, s: str, angle: float = 0.0):
 
 def text_right(x: float, y: float, s: str, angle: float = 0.0):
     text(x, y, s, orientation='right')
+
+
+@keep
+def picture(x: float, y: float, filename: str, width: Optional[float] = None, height: Optional[float] = None, degrees: float = 0.0):
+    x_scaled = _scale_x(x)
+    y_scaled = _scale_y(y)
+    img = pg.image.load(filename)
+
+    # PennDraw.java uses the center of the image as the anchor point,
+    # so we mimic that here
+    img.anchor_x = img.width // 2
+    img.anchor_y = img.height // 2
+
+    # TODO: Apparently throwing all Sprites in the same batch is bad for performance.
+    #       Need to keep an eye on this.
+    the_sprite = pg.sprite.Sprite(img, x=x_scaled, y=y_scaled, batch=BATCH)
+
+    if width is not None:
+        the_sprite.scale_x = width / img.width
+    if height is not None:
+        the_sprite.scale_y = height / img.height
+    the_sprite.rotation = degrees
+    return the_sprite
 
 
 @window.event
