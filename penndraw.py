@@ -1,6 +1,10 @@
+from pyglet.window import Window
 import pyglet as pg
+import sys
 from dataclasses import dataclass
 from typing import Optional
+from functools import wraps
+
 
 from unfilled_shapes import *
 
@@ -48,6 +52,9 @@ y_scale: float = height / (y_max - y_min)
 color: tuple[int, int, int, int] = (255, 255, 255, 255)
 pen_radius: float = 0.002
 
+
+framerate: int = 60
+
 DEFAULT_FONT_NAME: str = "SansSerif"
 DEFAULT_FONT_SIZE: float = 12
 
@@ -62,8 +69,44 @@ class FontProperties:
 font = FontProperties()
 
 
-def run():
+@window.event
+def on_draw():
+    window.clear()
+    BATCH.draw()
+
+
+def run(animation=None):
     pg.app.run()
+
+
+# TODO: this works on its own, but the program
+# overrides the framerate when it receives mouse interaction.
+# I have no idea what is going on with that. 🤷
+def enable_animation(_framerate):
+    global framerate
+    framerate = _framerate
+
+
+# alias for enable_animation; set_framerate is a
+# much better name but we're keeping enable_animation
+# for compatibility.
+set_framerate = enable_animation
+
+# loop = pg.app.platform_event_loop
+# clock = super(loop, pg.app.base).clock
+# loop.clock.unschedule(loop._redraw_windows)
+# loop.clock.schedule_interval(loop._redraw_windows, 1 / framerate)
+
+
+def advance():
+    pg.app.platform_event_loop.step(0)
+    [window] = pg.app.windows
+    if (window.has_exit):
+        sys.exit(0)
+    window.switch_to()
+    window.dispatch_events()
+    on_draw()
+    window.flip()
 
 
 def set_canvas_size(w: int, h: int):
@@ -388,9 +431,3 @@ def picture(x: float, y: float, filename: str, width: Optional[float] = None, he
         the_sprite.scale_y = height / img.height
     the_sprite.rotation = degrees
     return the_sprite
-
-
-@window.event
-def on_draw():
-    window.clear()
-    BATCH.draw()
