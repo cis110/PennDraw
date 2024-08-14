@@ -1,9 +1,9 @@
-from pyglet.window import Window
 import pyglet as pg
+from pyglet.window.key import KeyStateHandler, LSHIFT, RSHIFT
+from pyglet.window.mouse import MouseStateHandler, LEFT
 import sys
 from dataclasses import dataclass
 from typing import Optional
-from functools import wraps
 
 
 from unfilled_shapes import *
@@ -13,10 +13,17 @@ DEFAULT_MIN_COORD: float = 0.0
 DEFAULT_MAX_COORD: float = 1.0
 height: int = DEFAULT_SIZE
 width: int = DEFAULT_SIZE
-window: pg.window.Window = pg.window.Window(width, height)
+window = pg.window.Window(width, height)
 BATCH: pg.graphics.Batch = pg.graphics.Batch()
 VERTICES: list = []
 BORDER: float = 0.0
+MOUSE_STATE = MouseStateHandler()
+KEY_STATE = KeyStateHandler()
+KEYS_PRESSED: set[int] = set()
+
+window.push_handlers(MOUSE_STATE)
+window.push_handlers(KEY_STATE)
+
 
 BLACK: tuple[int, int, int, int] = (0, 0, 0, 255)
 WHITE: tuple[int, int, int, int] = (255, 255, 255, 255)
@@ -92,15 +99,16 @@ def enable_animation(_framerate):
 # for compatibility.
 set_framerate = enable_animation
 
-# loop = pg.app.platform_event_loop
-# clock = super(loop, pg.app.base).clock
-# loop.clock.unschedule(loop._redraw_windows)
-# loop.clock.schedule_interval(loop._redraw_windows, 1 / framerate)
+# fps_display = pg.window.FPSDisplay(window=window)
 
 
 def advance():
-    pg.app.platform_event_loop.step(0)
+    pg.app.platform_event_loop.step(1 / 60)
+    if (len(pg.app.windows) > 1):
+        raise ValueError(
+            "Something unexpected has happened. Please contact course staff!")
     [window] = pg.app.windows
+
     if (window.has_exit):
         sys.exit(0)
     window.switch_to()
@@ -247,6 +255,14 @@ def _factor_x(w: float) -> float:
 
 def _factor_y(h: float) -> float:
     return h * height / abs(y_max - y_min)
+
+
+def _user_x(x: float) -> float:
+    return x_min + x / x_scale
+
+
+def _user_y(y: float) -> float:
+    return y_min + y / y_scale
 
 
 def _scaled_pen_radius() -> float:
@@ -431,3 +447,48 @@ def picture(x: float, y: float, filename: str, width: Optional[float] = None, he
         the_sprite.scale_y = height / img.height
     the_sprite.rotation = degrees
     return the_sprite
+
+
+def mouse_x():
+    return _user_x(MOUSE_STATE['x'])
+
+
+def mouse_y():
+    return _user_y(MOUSE_STATE['y'])
+
+
+def mouse_pressed():
+    return MOUSE_STATE[LEFT]
+
+
+def has_next_key_typed():
+    """Return True if a key is currently being typed, False otherwise."""
+    KEYS_PRESSED = {k for k, v in KEY_STATE.data.items()
+                    if v and _printable(k)}
+    return len(KEYS_PRESSED) > 0
+
+
+def is_key_typed(key: str):
+    """Return True if the key is currently being typed, False otherwise.
+    Note that this is not case-sensitive—'a' and 'A' will both return True
+    if the 'a' key is being typed."""
+    return KEY_STATE[ord(key)]
+
+
+def _printable(char_code: int) -> bool:
+    return 32 <= char_code <= 127
+
+
+def next_key_typed():
+    """Return the next key being typed as a string.
+    If multiple keys are being typed, return one of them arbitrarily.
+    Capable of returning any ASCII character between 32 and 127.
+    (Anything printable on a standard US keyboard.)
+    Caps Lock will not have an effect on the output, but Shift will.
+    """
+    char_code = {k for k, v in KEY_STATE.data.items()
+                 if v and _printable(k)}.pop()
+    if KEY_STATE[LSHIFT] or KEY_STATE[RSHIFT]:
+        return chr(char_code).upper()
+    else:
+        return chr(char_code)
