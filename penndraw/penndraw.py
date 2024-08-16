@@ -21,6 +21,7 @@ KEYS_PRESSED: set[int] = set()
 
 window.push_handlers(MOUSE_STATE)
 window.push_handlers(KEY_STATE)
+pg.gl.glClearColor(1.0, 1.0, 1.0, 1.0)
 
 
 BLACK: tuple[int, int, int, int] = (0, 0, 0, 255)
@@ -54,7 +55,7 @@ y_max: float = DEFAULT_MAX_COORD
 x_scale: float = width / (x_max - x_min)
 y_scale: float = height / (y_max - y_min)
 
-color: tuple[int, int, int, int] = (255, 255, 255, 255)
+color: tuple[int, int, int, int] = (0, 0, 0, 255)
 pen_radius: float = 0.002
 
 
