@@ -201,6 +201,15 @@ def set_font_size(pointSize: float):
         raise ValueError("Invalid font size: must be non-negative.")
     font.size = pointSize
 
+def set_font_plain():
+    raise NotImplementedError("Not yet implemented. 🤷")
+def set_font_bold():
+    raise NotImplementedError("Not yet implemented. 🤷")
+def set_font_italic():
+    raise NotImplementedError("Not yet implemented. 🤷")
+def set_font_bold_italic():
+    raise NotImplementedError("Not yet implemented. 🤷")
+
 
 def _validate_color(args):
     if len(args) == 1:
@@ -408,6 +417,15 @@ def polygon(*points):
             "Invalid polygon: must provide an even number of points.")
     zipped_points = zip(points[::2], points[1::2])
     return pg.shapes.MultiLine(*zipped_points, color=color, thickness=_scaled_pen_radius(), batch=BATCH, closed=True)
+
+@keep
+@scale_inputs
+def polyline(*points):
+    if len(points) % 2 != 0:
+        raise ValueError(
+            "Invalid polyline: must provide an even number of points.")
+    zipped_points = zip(points[::2], points[1::2])
+    return pg.shapes.MultiLine(*zipped_points, color=color, thickness=_scaled_pen_radius(), batch=BATCH, closed=False)
 
 
 @keep
