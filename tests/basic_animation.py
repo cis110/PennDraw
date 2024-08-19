@@ -2,7 +2,7 @@
 Animate a square sliding across the horizontal axis of the canvas.
 """
 
-from ..penndraw import penndraw as pd
+import penndraw as pd
 
 pd.set_canvas_size(500, 500)
 x_center = 0.5

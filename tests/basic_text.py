@@ -9,5 +9,5 @@ import penndraw as pd
 
 pd.set_canvas_size(500, 500)
 pd.circle(0.5, 0.5, 0.01)
-pd.text(0.5, 0.5, "Howdy, partner.")
+pd.text(0.5, 0.5, "Howdy, partner.", 30)
 pd.run()

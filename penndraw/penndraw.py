@@ -340,6 +340,55 @@ def circle(x: float, y: float, radius: float):
 def filled_circle(x: float, y: float, radius: float):
     __ellipse(x, y, radius, radius, True)
 
+@keep
+def __arc(x: float, y: float, r: float, angle1: float, angle2: float, closed=False):
+    x_scaled = _scale_x(x)
+    y_scaled = _scale_y(y)
+    r_scaled = _factor_x(r)
+    if (r_scaled < 1):
+        raise ValueError(
+            "Invalid arc size: radius must be positive.")
+    # constrain angles to [0, 360], and convert from
+    # degrees to radians
+    angle1 = angle1 * (3.14159 / 180)
+    angle2 = angle2 * (3.14159 / 180)
+    angle_diff = angle2 - angle1
+    if angle_diff < 0:
+        angle_diff %= 2 * 3.14159
+
+    return pg.shapes.Arc(x_scaled, y_scaled, r_scaled, start_angle=angle1, angle=angle_diff, closed=closed, color=color, thickness=_scaled_pen_radius(), batch=BATCH)
+
+def arc(x: float, y: float, r: float, angle1: float, angle2: float):
+    __arc(x, y, r, angle1, angle2)
+
+def closed_arc(x: float, y: float, r: float, angle1: float, angle2: float):
+    __arc(x, y, r, angle1, angle2, closed=True)
+
+@keep
+def __sector(x: float, y: float, r: float, angle1: float, angle2: float):
+    x_scaled = _scale_x(x)
+    y_scaled = _scale_y(y)
+    r_scaled = _factor_x(r)
+    if (r_scaled < 1):
+        raise ValueError(
+            "Invalid sector size: radius must be positive.")
+    # constrain angles to [0, 360], and convert from
+    # degrees to radians
+    angle1 = angle1 * (3.14159 / 180)
+    angle2 = angle2 * (3.14159 / 180)
+    angle_diff = angle2 - angle1
+    if angle_diff < 0:
+        angle_diff %= 2 * 3.14159
+
+    return pg.shapes.Sector(x_scaled, y_scaled, r_scaled, start_angle=angle1, angle=angle_diff, color=color, batch=BATCH)
+
+def filled_pie(x: float, y: float, r: float, angle1: float, angle2: float):
+    __sector(x, y, r, angle1, angle2)
+
+def pie(x: float, y: float, r: float, angle1: float, angle2: float):
+    arc(x, y, r, angle1, angle2)
+    line(x, y, x + r * math.cos(math.radians(angle1)), y + r * math.sin(math.radians(angle1)))
+    line(x, y, x + r * math.cos(math.radians(angle2)), y + r * math.sin(math.radians(angle2)))
 
 @keep
 def __rectangle(x: float, y: float, half_width: float, half_height: float, filled: bool):
