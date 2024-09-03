@@ -327,7 +327,7 @@ def point(x: float, y: float):
 
 
 @keep
-def __ellipse(x: float, y: float, a: float, b: float, filled: bool):
+def __ellipse(x: float, y: float, a: float, b: float, filled: bool, rotation: float):
     x_scaled = _scale_x(x)
     y_scaled = _scale_y(y)
     a_scaled = _factor_x(a)
@@ -343,25 +343,36 @@ def __ellipse(x: float, y: float, a: float, b: float, filled: bool):
                              b_scaled, segments, color, batch=BATCH)
         paired = [[a + x_scaled, b + y_scaled] for a, b in zip(
             _e._get_vertices()[::2], _e._get_vertices()[1::2])]
-        return pg.shapes.MultiLine(*paired, thickness=_scaled_pen_radius(), closed=True, color=color, batch=BATCH)
+        ml = pg.shapes.MultiLine(
+            *paired, thickness=_scaled_pen_radius(), closed=True, color=color, batch=BATCH)
+        # I have no idea. I have no idea. I have no idea.
+        ml.anchor_position = (-a_scaled, 0)
+        ml.position = (x_scaled, y_scaled)
+
+        ml.rotation = rotation
+        return ml
+
     else:
-        return pg.shapes.Ellipse(x_scaled, y_scaled, a_scaled, b_scaled, color=color, batch=BATCH, segments=50)
+        ellipse = pg.shapes.Ellipse(
+            x_scaled, y_scaled, a_scaled, b_scaled, color=color, batch=BATCH, segments=50)
+        ellipse.rotation = rotation
+        return ellipse
 
 
-def ellipse(x: float, y: float, a: float, b: float):
-    __ellipse(x, y, a, b, False)
+def ellipse(x: float, y: float, a: float, b: float, angle: float = 0.0):
+    __ellipse(x, y, a, b, False, angle)
 
 
-def filled_ellipse(x: float, y: float, a: float, b: float):
-    __ellipse(x, y, a, b, True)
+def filled_ellipse(x: float, y: float, a: float, b: float, angle: float = 0.0):
+    __ellipse(x, y, a, b, True, angle)
 
 
 def circle(x: float, y: float, radius: float):
-    __ellipse(x, y, radius, radius, False)
+    __ellipse(x, y, radius, radius, False, 0)
 
 
 def filled_circle(x: float, y: float, radius: float):
-    __ellipse(x, y, radius, radius, True)
+    __ellipse(x, y, radius, radius, True, 0)
 
 
 @keep
@@ -423,7 +434,7 @@ def pie(x: float, y: float, r: float, angle1: float, angle2: float):
 
 
 @keep
-def __rectangle(x: float, y: float, half_width: float, half_height: float, filled: bool):
+def __rectangle(x: float, y: float, half_width: float, half_height: float, filled: bool, rotation: float):
 
     w_scaled = _factor_x(half_width)
     h_scaled = _factor_y(half_height)
@@ -441,25 +452,35 @@ def __rectangle(x: float, y: float, half_width: float, half_height: float, fille
             _r._get_vertices()[::2], _r._get_vertices()[1::2])]
         # add a repeat of the second vertex to avoid the weird line cap issue
         paired.append(paired[1])
-        return pg.shapes.MultiLine(*paired, thickness=_scaled_pen_radius(), closed=True, color=color, batch=BATCH)
+        ml = pg.shapes.MultiLine(
+            *paired, thickness=_scaled_pen_radius(), closed=True, color=color, batch=BATCH)
+        ml.anchor_position = (w_scaled, h_scaled)
+        ml.position = (x_scaled + w_scaled, y_scaled + h_scaled)
+        ml.rotation = rotation
+        return ml
     else:
-        return pg.shapes.Rectangle(x_scaled, y_scaled, 2 * w_scaled, 2 * h_scaled, color=color, batch=BATCH)
+        rect = pg.shapes.Rectangle(
+            x_scaled, y_scaled, 2 * w_scaled, 2 * h_scaled, color=color, batch=BATCH)
+        rect.anchor_position = (w_scaled, h_scaled)
+        rect.position = (x_scaled + w_scaled, y_scaled + h_scaled)
+        rect.rotation = rotation
+        return rect
 
 
-def rectangle(x: float, y: float, half_width: float, half_height: float):
-    __rectangle(x, y, half_width, half_height, False)
+def rectangle(x: float, y: float, half_width: float, half_height: float, angle: float = 0.0):
+    __rectangle(x, y, half_width, half_height, False, angle)
 
 
-def filled_rectangle(x: float, y: float, half_width: float, half_height: float):
-    __rectangle(x, y, half_width, half_height, True)
+def filled_rectangle(x: float, y: float, half_width: float, half_height: float, angle: float = 0.0):
+    __rectangle(x, y, half_width, half_height, True, angle)
 
 
-def square(x: float, y: float, half_side_length: float):
-    __rectangle(x, y, half_side_length, half_side_length, False)
+def square(x: float, y: float, half_side_length: float, angle: float = 0.0):
+    __rectangle(x, y, half_side_length, half_side_length, False, angle)
 
 
-def filled_square(x: float, y: float, half_side_length: float):
-    __rectangle(x, y, half_side_length, half_side_length, True)
+def filled_square(x: float, y: float, half_side_length: float, angle: float = 0.0):
+    __rectangle(x, y, half_side_length, half_side_length, True, angle)
 
 
 @keep
