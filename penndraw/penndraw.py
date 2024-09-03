@@ -5,6 +5,7 @@ import sys
 from dataclasses import dataclass
 from typing import Optional
 from .unfilled_shapes import *
+import time
 
 DEFAULT_SIZE: int = 512
 DEFAULT_MIN_COORD: float = 0.0
@@ -103,6 +104,7 @@ set_framerate = enable_animation
 
 def advance():
     pg.app.platform_event_loop.step(1 / 30)
+    time.sleep(1 / 30)
     if (len(pg.app.windows) > 1):
         raise ValueError(
             "Something unexpected has happened. Please contact course staff!")
@@ -201,12 +203,19 @@ def set_font_size(pointSize: float):
         raise ValueError("Invalid font size: must be non-negative.")
     font.size = pointSize
 
+
 def set_font_plain():
     raise NotImplementedError("Not yet implemented. 🤷")
+
+
 def set_font_bold():
     raise NotImplementedError("Not yet implemented. 🤷")
+
+
 def set_font_italic():
     raise NotImplementedError("Not yet implemented. 🤷")
+
+
 def set_font_bold_italic():
     raise NotImplementedError("Not yet implemented. 🤷")
 
@@ -304,6 +313,20 @@ def clear(*args):
 
 
 @keep
+def _pixel(x: float, y: float):
+    x_scaled = _scale_x(x)
+    y_scaled = _scale_y(y)
+    return pg.shapes.Rectangle(x_scaled, y_scaled, 1, 1, color=color, batch=BATCH)
+
+
+def point(x: float, y: float):
+    if _scaled_pen_radius() <= 1:
+        _pixel(x, y)
+    else:
+        filled_circle(x, y, pen_radius)
+
+
+@keep
 def __ellipse(x: float, y: float, a: float, b: float, filled: bool):
     x_scaled = _scale_x(x)
     y_scaled = _scale_y(y)
@@ -340,6 +363,7 @@ def circle(x: float, y: float, radius: float):
 def filled_circle(x: float, y: float, radius: float):
     __ellipse(x, y, radius, radius, True)
 
+
 @keep
 def __arc(x: float, y: float, r: float, angle1: float, angle2: float, closed=False):
     x_scaled = _scale_x(x)
@@ -358,11 +382,14 @@ def __arc(x: float, y: float, r: float, angle1: float, angle2: float, closed=Fal
 
     return pg.shapes.Arc(x_scaled, y_scaled, r_scaled, start_angle=angle1, angle=angle_diff, closed=closed, color=color, thickness=_scaled_pen_radius(), batch=BATCH)
 
+
 def arc(x: float, y: float, r: float, angle1: float, angle2: float):
     __arc(x, y, r, angle1, angle2)
 
+
 def closed_arc(x: float, y: float, r: float, angle1: float, angle2: float):
     __arc(x, y, r, angle1, angle2, closed=True)
+
 
 @keep
 def __sector(x: float, y: float, r: float, angle1: float, angle2: float):
@@ -382,13 +409,18 @@ def __sector(x: float, y: float, r: float, angle1: float, angle2: float):
 
     return pg.shapes.Sector(x_scaled, y_scaled, r_scaled, start_angle=angle1, angle=angle_diff, color=color, batch=BATCH)
 
+
 def filled_pie(x: float, y: float, r: float, angle1: float, angle2: float):
     __sector(x, y, r, angle1, angle2)
 
+
 def pie(x: float, y: float, r: float, angle1: float, angle2: float):
     arc(x, y, r, angle1, angle2)
-    line(x, y, x + r * math.cos(math.radians(angle1)), y + r * math.sin(math.radians(angle1)))
-    line(x, y, x + r * math.cos(math.radians(angle2)), y + r * math.sin(math.radians(angle2)))
+    line(x, y, x + r * math.cos(math.radians(angle1)),
+         y + r * math.sin(math.radians(angle1)))
+    line(x, y, x + r * math.cos(math.radians(angle2)),
+         y + r * math.sin(math.radians(angle2)))
+
 
 @keep
 def __rectangle(x: float, y: float, half_width: float, half_height: float, filled: bool):
@@ -466,6 +498,7 @@ def polygon(*points):
             "Invalid polygon: must provide an even number of points.")
     zipped_points = zip(points[::2], points[1::2])
     return pg.shapes.MultiLine(*zipped_points, color=color, thickness=_scaled_pen_radius(), batch=BATCH, closed=True)
+
 
 @keep
 @scale_inputs

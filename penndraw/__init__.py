@@ -19,7 +19,7 @@ for name, obj in inspect.getmembers(core):
 __all__.extend(CONSTANTS)
 
 # If you have any package-level variables or constants, you can define them here
-__version__ = "0.1.5"
+__version__ = "0.1.8"
 
 # Add the version to __all__
 __all__.append('__version__')
