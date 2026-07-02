@@ -60,33 +60,28 @@ pd.set_canvas_size(width, height)
 You can also change the window's coordinate system, which can make it much easier to compute the coordinates for your shapes:
 
 ```python
-pd.set_x_scale(left, right)
-pd.set_y_scale(bottom, top)
-pd.set_scale(left/bottom, right/top)
+pd.set_scale(min, max)
 pd.set_scale()
 ```
 
-- `left` is the x-coordinate of the left edge, `right` is the x-coordinate of the right edge, `bottom` is the y-coordinate of the bottom edge, and `top` is the y-coordinate of the top edge. `pd.set_scale(left/bottom, right/top)` is similar to calling both `pd.set_x_scale(left, right)` and `pd.set_y_scale(bottom, top)` with the same inputs (both x- and y-scales will be the same.)
-- `pd.set_scale()` resets the scale to the default. It is equivalent to `pd.set_scale(0, 1)`
-- *left, right, top, and bottom* can all be fractional or negative numbers, such as 1.2, 3.14159, or -2.71828.
+- `min` is the coordinate of the left and bottom edges; `max` is the coordinate of the right and top edges. Both x and y axes are set to the same range.
+- `pd.set_scale()` resets the scale to the default. It is equivalent to `pd.set_scale(0, 1)`.
+- `min` and `max` can be fractional or negative numbers, such as 1.2, 3.14159, or -2.71828.
 
 **Trying out the scale functions:**
 
 - Cut and paste the program below into a blank file and save it into that folder under the name `penn_draw_scale_test.py`. Make sure the capitalization matches exactly.
-- Run `penn_draw_scale_test.py`. When you run it, you should see a line between the bottom left and the center of the canvas. Note that the line now ends in the top middle of the image: the call to `pd.set_x_scale(0, 2)` redefined the right margin to have x-coordinate 2, so the x-coordinate 1 now refers to the middle of the window.
+- Run `penn_draw_scale_test.py`. When you run it, you should see a line between the bottom left and the center of the canvas. Note that the line now ends in the top middle of the image: the call to `pd.set_scale(0, 2)` redefined the right and top margin to have coordinate 2, so the coordinate 1 now refers to the middle of the window.
 
 ```python
 import penndraw as pd
-pd.set_x_scale(0, 2)
+pd.set_scale(0, 2)
 pd.line(0, 0, 1, 1)
 pd.run()
 ```
 
-- Play with different values in the call to pd.set_x_scale(). Each time you make a change, save your file, close the running program, and then run the program again.
-- Replace the class to `pd.set_x_scale()` with a call to `pd.set_y_scale()`. Play with different values to see the effect on the image.
-- Specifically, try `pd.set_y_scale(1, 0)`. This should flip your image vertically—it defines the *top* margin to have y-coordinate `0` and the *bottom* margin to have y-coordinate `1`.
-- Try calling `pd.set_scale(left/top, right/bottom)` and see what it does with different values.
-- Try calling `pd.set_x_scale()` and `pd.set_y_scale()` in the same program.
+- Play with different values in the call to `pd.set_scale()`. Each time you make a change, save your file, close the running program, and then run the program again.
+- Try `pd.set_scale(-1, 1)` and see how it affects the coordinate system.
 
 ---
 

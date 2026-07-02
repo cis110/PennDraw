@@ -1,6 +1,7 @@
 import pyglet as pg
 from pyglet.window.key import KeyStateHandler, LSHIFT, RSHIFT
 from pyglet.window.mouse import MouseStateHandler, LEFT
+import math
 import sys
 from dataclasses import dataclass
 from typing import Optional
@@ -56,19 +57,20 @@ y_max: float = DEFAULT_MAX_COORD
 x_scale: float = width / (x_max - x_min)
 y_scale: float = height / (y_max - y_min)
 
-color: tuple[int, int, int, int] = (0, 0, 0, 255)
-pen_radius: float = 0.002
-
-
-framerate: int = 60
-
+DEFAULT_PEN_RADIUS: float = 0.002
+DEFAULT_FRAMERATE: int = 60
 DEFAULT_FONT_NAME: str = "SansSerif"
 DEFAULT_FONT_SIZE: float = 12
+
+color: tuple[int, int, int, int] = (0, 0, 0, 255)
+pen_radius: float = DEFAULT_PEN_RADIUS
+framerate: int = DEFAULT_FRAMERATE
 
 
 @dataclass
 class FontProperties:
     """Stores all of the current font properties."""
+
     name: str = DEFAULT_FONT_NAME
     size: float = DEFAULT_FONT_SIZE
 
@@ -86,11 +88,10 @@ def run(animation=None):
     pg.app.run()
 
 
-# TODO: this works on its own, but the program
-# overrides the framerate when it receives mouse interaction.
-# I have no idea what is going on with that. 🤷
 def enable_animation(_framerate):
     global framerate
+    if not isinstance(_framerate, (int, float)) or _framerate <= 0:
+        raise ValueError("Invalid framerate: must be a positive number.")
     framerate = _framerate
 
 
@@ -102,20 +103,35 @@ set_framerate = enable_animation
 # fps_display = pg.window.FPSDisplay(window=window)
 
 
+_next_frame_deadline: float = 0.0
+
+
 def advance():
-    pg.app.platform_event_loop.step(1 / 30)
-    time.sleep(1 / 30)
-    if (len(pg.app.windows) > 1):
+    global _next_frame_deadline
+    # platform_event_loop.step(timeout) returns early whenever an OS event
+    # arrives (mouse movement floods these), so a single step() call can't
+    # be trusted to wait a full frame. Keep stepping until the deadline
+    # actually passes; this holds the framerate steady under interaction.
+    while (remaining := _next_frame_deadline - time.perf_counter()) > 0:
+        pg.app.platform_event_loop.step(remaining)
+    if len(pg.app.windows) > 1:
         raise ValueError(
-            "Something unexpected has happened. Please contact course staff!")
+            "Something unexpected has happened. Please contact course staff!"
+        )
     [window] = pg.app.windows
 
-    if (window.has_exit):
+    if window.has_exit:
         sys.exit(0)
     window.switch_to()
     window.dispatch_events()
     on_draw()
     window.flip()
+    # Schedule the next frame relative to this frame's deadline so drawing
+    # time doesn't stretch the interval; if drawing overran the interval,
+    # start fresh from now rather than racing to catch up.
+    _next_frame_deadline = max(
+        _next_frame_deadline + 1 / framerate, time.perf_counter()
+    )
 
 
 def set_canvas_size(w: int, h: int):
@@ -124,9 +140,10 @@ def set_canvas_size(w: int, h: int):
     """
 
     global width, height
-    if (w < 1 or h < 1):
+    if w < 1 or h < 1:
         raise ValueError(
-            "Invalid canvas size: width and height must be positive.")
+            "Invalid canvas size: width and height must be positive."
+        )
     width = w
     height = h
     window.set_size(w, h)
@@ -134,13 +151,12 @@ def set_canvas_size(w: int, h: int):
 
 
 def set_pen_radius(r: float):
-    """Set the radius of the pen to the specified width. The default width is 0.002.
+    """Set the radius of the pen to the specified width. The default width is DEFAULT_PEN_RADIUS (0.002).
     Raises a ValueError if the radius is negative.
     Raises a TypeError if the radius is not a number.
     """
     if not isinstance(r, (int, float)):
-        raise TypeError(
-            "Invalid pen radius: must be a number between 0 and 1")
+        raise TypeError("Invalid pen radius: must be a number between 0 and 1")
     if r <= 0:
         raise ValueError("Invalid pen radius: must be positive.")
     global pen_radius
@@ -180,8 +196,7 @@ def set_font(*args):
 
 
 def get_font() -> str:
-    """Return the current font.
-    """
+    """Return the current font."""
     return font.name
 
 
@@ -222,25 +237,39 @@ def set_font_bold_italic():
 
 def _validate_color(args):
     if len(args) == 1:
-        if not isinstance(args[0], tuple) or len(args[0]) not in (3, 4) or not all(isinstance(x, int) and 0 <= x <= 255 for x in args[0]):
+        if (
+            not isinstance(args[0], tuple)
+            or len(args[0]) not in (3, 4)
+            or not all(isinstance(x, int) and 0 <= x <= 255 for x in args[0])
+        ):
             raise ValueError(
-                "Invalid color: input tuple must consist of 3 or 4 integers between 0-255.")
+                "Invalid color: input tuple must consist of 3 or 4 integers between 0-255."
+            )
         if len(args[0]) == 3:
             return args[0] + (255,)
         else:
             return args[0]
-    elif len(args) in (3, 4):
+    elif len(args) == 3:
         if not all(isinstance(x, int) and 0 <= x <= 255 for x in args):
             raise ValueError(
-                "Invalid colors: must have 3 or 4 integer components between 0-255.")
+                "Invalid colors: must have 3 or 4 integer components between 0-255."
+            )
+        return args + (255,)
+    elif len(args) == 4:
+        if not all(isinstance(x, int) and 0 <= x <= 255 for x in args):
+            raise ValueError(
+                "Invalid colors: must have 3 or 4 integer components between 0-255."
+            )
         return args
     else:
         raise ValueError(
-            "Invalid number of arguments. Must provide a color in RGB or RGBA format.")
+            "Invalid number of arguments. Must provide a color in RGB or RGBA format."
+        )
 
 
-def set_scale(min_c: float, max_c: float):
+def set_scale(min_c: float = DEFAULT_MIN_COORD, max_c: float = DEFAULT_MAX_COORD):
     """Set the scale of the canvas to the specified minimum and maximum coordinates.
+    Calling set_scale() with no arguments resets to the default (0, 1).
     """
 
     global x_min, x_max, y_min, y_max
@@ -289,26 +318,56 @@ def _scaled_pen_radius() -> float:
 def keep(f):
     def wrapper(*args, **kwargs):
         VERTICES.append(f(*args, **kwargs))
+
     return wrapper
 
 
 def scale_inputs(f):
     def wrapper(*args, **kwargs):
         return f(*_scale_points(*args), **kwargs)
+
     return wrapper
 
 
+def _reset():
+    """Reset all drawing state to defaults. Intended for use between tests."""
+    global width, height, BATCH, VERTICES, color, pen_radius, framerate, font
+    global _next_frame_deadline
+
+    _next_frame_deadline = 0.0
+
+    for shape in VERTICES:
+        shape.delete()
+    VERTICES.clear()
+    BATCH = pg.graphics.Batch()
+
+    width = DEFAULT_SIZE
+    height = DEFAULT_SIZE
+    window.set_size(width, height)
+
+    color = BLACK
+    pen_radius = DEFAULT_PEN_RADIUS
+    framerate = DEFAULT_FRAMERATE
+    font = FontProperties()
+
+    set_scale(DEFAULT_MIN_COORD, DEFAULT_MAX_COORD)
+    pg.gl.glClearColor(1.0, 1.0, 1.0, 1.0)
+
+
 def clear(*args):
-    """Clear the canvas to a given color.
-    """
+    """Clear the canvas to a given color."""
     global color
     old_color = color
     color = WHITE if not args else _validate_color(args)
     for shape in VERTICES:
         shape.delete()
     VERTICES.clear()
-    filled_rectangle((x_min + x_max) / 2, abs(y_min + y_max) / 2,
-                     (x_max - x_min) / 2, abs(y_max - y_min) / 2)
+    filled_rectangle(
+        (x_min + x_max) / 2,
+        abs(y_min + y_max) / 2,
+        (x_max - x_min) / 2,
+        abs(y_max - y_min) / 2,
+    )
     color = old_color
 
 
@@ -316,7 +375,9 @@ def clear(*args):
 def _pixel(x: float, y: float):
     x_scaled = _scale_x(x)
     y_scaled = _scale_y(y)
-    return pg.shapes.Rectangle(x_scaled, y_scaled, 1, 1, color=color, batch=BATCH)
+    return pg.shapes.Rectangle(
+        x_scaled, y_scaled, 1, 1, color=color, batch=BATCH
+    )
 
 
 def point(x: float, y: float):
@@ -327,34 +388,48 @@ def point(x: float, y: float):
 
 
 @keep
-def __ellipse(x: float, y: float, a: float, b: float, filled: bool, rotation: float):
+def __ellipse(
+    x: float, y: float, a: float, b: float, filled: bool, rotation: float
+):
     x_scaled = _scale_x(x)
     y_scaled = _scale_y(y)
     a_scaled = _factor_x(a)
     b_scaled = _factor_y(b)
     segments = max(50, int(max(a_scaled, b_scaled) / 1.25))
 
-    if (a_scaled < 1 or b_scaled < 1):
+    if a_scaled < 1 or b_scaled < 1:
         raise ValueError(
-            "Invalid ellipse size: width and height must be positive.")
+            "Invalid ellipse size: width and height must be positive."
+        )
 
     if not filled:
-        _e = UnfilledEllipse(x_scaled, y_scaled, a_scaled,
-                             b_scaled, segments, color, batch=BATCH)
-        paired = [[a + x_scaled, b + y_scaled] for a, b in zip(
-            _e._get_vertices()[::2], _e._get_vertices()[1::2])]
-        ml = pg.shapes.MultiLine(
-            *paired, thickness=_scaled_pen_radius(), closed=True, color=color, batch=BATCH)
-        # I have no idea. I have no idea. I have no idea.
-        ml.anchor_position = (-a_scaled, 0)
-        ml.position = (x_scaled, y_scaled)
-
-        ml.rotation = rotation
-        return ml
+        rot_rad = math.radians(rotation)
+        cos_r, sin_r = math.cos(rot_rad), math.sin(rot_rad)
+        points = [
+            (x_scaled + (a_scaled * math.cos(i * 2 * math.pi / segments)) * cos_r
+                      - (b_scaled * math.sin(i * 2 * math.pi / segments)) * sin_r,
+             y_scaled + (a_scaled * math.cos(i * 2 * math.pi / segments)) * sin_r
+                      + (b_scaled * math.sin(i * 2 * math.pi / segments)) * cos_r)
+            for i in range(segments)
+        ]
+        return pg.shapes.MultiLine(
+            *points,
+            thickness=_scaled_pen_radius(),
+            closed=True,
+            color=color,
+            batch=BATCH,
+        )
 
     else:
         ellipse = pg.shapes.Ellipse(
-            x_scaled, y_scaled, a_scaled, b_scaled, color=color, batch=BATCH, segments=50)
+            x_scaled,
+            y_scaled,
+            a_scaled,
+            b_scaled,
+            color=color,
+            batch=BATCH,
+            segments=50,
+        )
         ellipse.rotation = rotation
         return ellipse
 
@@ -376,22 +451,39 @@ def filled_circle(x: float, y: float, radius: float):
 
 
 @keep
-def __arc(x: float, y: float, r: float, angle1: float, angle2: float, closed=False):
+def __arc(
+    x: float, y: float, r: float, angle1: float, angle2: float, closed=False
+):
     x_scaled = _scale_x(x)
     y_scaled = _scale_y(y)
-    r_scaled = _factor_x(r)
-    if (r_scaled < 1):
-        raise ValueError(
-            "Invalid arc size: radius must be positive.")
-    # constrain angles to [0, 360], and convert from
-    # degrees to radians
-    angle1 = angle1 * (3.14159 / 180)
-    angle2 = angle2 * (3.14159 / 180)
-    angle_diff = angle2 - angle1
-    if angle_diff < 0:
-        angle_diff %= 2 * 3.14159
+    rx = _factor_x(r)
+    ry = _factor_y(r)
+    if rx < 1 or ry < 1:
+        raise ValueError("Invalid arc size: radius must be positive.")
 
-    return pg.shapes.Arc(x_scaled, y_scaled, r_scaled, start_angle=angle1, angle=angle_diff, closed=closed, color=color, thickness=_scaled_pen_radius(), batch=BATCH)
+    a1 = angle1 * (math.pi / 180)
+    a2 = angle2 * (math.pi / 180)
+    angle_diff = a2 - a1
+    if angle_diff < 0:
+        angle_diff %= 2 * math.pi
+
+    n = max(20, int(max(rx, ry) / 1.25 * angle_diff / (2 * math.pi)))
+    points = [
+        (x_scaled + rx * math.cos(a1 + i * angle_diff / n),
+         y_scaled + ry * math.sin(a1 + i * angle_diff / n))
+        for i in range(n + 1)
+    ]
+
+    if closed:
+        points = [(x_scaled, y_scaled)] + points + [(x_scaled, y_scaled)]
+
+    return pg.shapes.MultiLine(
+        *points,
+        closed=False,
+        color=color,
+        thickness=_scaled_pen_radius(),
+        batch=BATCH,
+    )
 
 
 def arc(x: float, y: float, r: float, angle1: float, angle2: float):
@@ -407,9 +499,8 @@ def __sector(x: float, y: float, r: float, angle1: float, angle2: float):
     x_scaled = _scale_x(x)
     y_scaled = _scale_y(y)
     r_scaled = _factor_x(r)
-    if (r_scaled < 1):
-        raise ValueError(
-            "Invalid sector size: radius must be positive.")
+    if r_scaled < 1:
+        raise ValueError("Invalid sector size: radius must be positive.")
     # constrain angles to [0, 360], and convert from
     # degrees to radians
     angle1 = angle1 * (3.14159 / 180)
@@ -418,7 +509,15 @@ def __sector(x: float, y: float, r: float, angle1: float, angle2: float):
     if angle_diff < 0:
         angle_diff %= 2 * 3.14159
 
-    return pg.shapes.Sector(x_scaled, y_scaled, r_scaled, start_angle=angle1, angle=angle_diff, color=color, batch=BATCH)
+    return pg.shapes.Sector(
+        x_scaled,
+        y_scaled,
+        r_scaled,
+        start_angle=angle1,
+        angle=angle_diff,
+        color=color,
+        batch=BATCH,
+    )
 
 
 def filled_pie(x: float, y: float, r: float, angle1: float, angle2: float):
@@ -427,51 +526,97 @@ def filled_pie(x: float, y: float, r: float, angle1: float, angle2: float):
 
 def pie(x: float, y: float, r: float, angle1: float, angle2: float):
     arc(x, y, r, angle1, angle2)
-    line(x, y, x + r * math.cos(math.radians(angle1)),
-         y + r * math.sin(math.radians(angle1)))
-    line(x, y, x + r * math.cos(math.radians(angle2)),
-         y + r * math.sin(math.radians(angle2)))
+    line(
+        x,
+        y,
+        x + r * math.cos(math.radians(angle1)),
+        y + r * math.sin(math.radians(angle1)),
+    )
+    line(
+        x,
+        y,
+        x + r * math.cos(math.radians(angle2)),
+        y + r * math.sin(math.radians(angle2)),
+    )
 
 
 @keep
-def __rectangle(x: float, y: float, half_width: float, half_height: float, filled: bool, rotation: float):
-
+def __rectangle(
+    x: float,
+    y: float,
+    half_width: float,
+    half_height: float,
+    filled: bool,
+    rotation: float,
+):
     w_scaled = _factor_x(half_width)
     h_scaled = _factor_y(half_height)
     x_scaled = _scale_x(x) - w_scaled
     y_scaled = _scale_y(y) - h_scaled
 
-    if (w_scaled < 1 or h_scaled < 1):
+    if w_scaled < 1 or h_scaled < 1:
         raise ValueError(
-            "Invalid rectangle size: half_width and half_height must be positive.")
+            "Invalid rectangle size: half_width and half_height must be positive."
+        )
 
     if not filled:
-        _r = UnfilledRectangle(x_scaled, y_scaled, 2 *
-                               w_scaled, 2 * h_scaled, color=color, batch=BATCH)
-        paired = [[a + x_scaled, b + y_scaled] for a, b in zip(
-            _r._get_vertices()[::2], _r._get_vertices()[1::2])]
+        _r = UnfilledRectangle(
+            x_scaled,
+            y_scaled,
+            2 * w_scaled,
+            2 * h_scaled,
+            color=color,
+            batch=BATCH,
+        )
+        paired = [
+            [a + x_scaled, b + y_scaled]
+            for a, b in zip(_r._get_vertices()[::2], _r._get_vertices()[1::2])
+        ]
         # add a repeat of the second vertex to avoid the weird line cap issue
         paired.append(paired[1])
         ml = pg.shapes.MultiLine(
-            *paired, thickness=_scaled_pen_radius(), closed=True, color=color, batch=BATCH)
+            *paired,
+            thickness=_scaled_pen_radius(),
+            closed=True,
+            color=color,
+            batch=BATCH,
+        )
         ml.anchor_position = (w_scaled, h_scaled)
         ml.position = (x_scaled + w_scaled, y_scaled + h_scaled)
         ml.rotation = rotation
         return ml
     else:
         rect = pg.shapes.Rectangle(
-            x_scaled, y_scaled, 2 * w_scaled, 2 * h_scaled, color=color, batch=BATCH)
+            x_scaled,
+            y_scaled,
+            2 * w_scaled,
+            2 * h_scaled,
+            color=color,
+            batch=BATCH,
+        )
         rect.anchor_position = (w_scaled, h_scaled)
         rect.position = (x_scaled + w_scaled, y_scaled + h_scaled)
         rect.rotation = rotation
         return rect
 
 
-def rectangle(x: float, y: float, half_width: float, half_height: float, angle: float = 0.0):
+def rectangle(
+    x: float,
+    y: float,
+    half_width: float,
+    half_height: float,
+    angle: float = 0.0,
+):
     __rectangle(x, y, half_width, half_height, False, angle)
 
 
-def filled_rectangle(x: float, y: float, half_width: float, half_height: float, angle: float = 0.0):
+def filled_rectangle(
+    x: float,
+    y: float,
+    half_width: float,
+    half_height: float,
+    angle: float = 0.0,
+):
     __rectangle(x, y, half_width, half_height, True, angle)
 
 
@@ -479,7 +624,9 @@ def square(x: float, y: float, half_side_length: float, angle: float = 0.0):
     __rectangle(x, y, half_side_length, half_side_length, False, angle)
 
 
-def filled_square(x: float, y: float, half_side_length: float, angle: float = 0.0):
+def filled_square(
+    x: float, y: float, half_side_length: float, angle: float = 0.0
+):
     __rectangle(x, y, half_side_length, half_side_length, True, angle)
 
 
@@ -490,7 +637,15 @@ def __line(x1: float, y1: float, x2: float, y2: float):
     x2_scaled = _scale_x(x2)
     y2_scaled = _scale_y(y2)
 
-    return pg.shapes.Line(x1_scaled, y1_scaled, x2_scaled, y2_scaled, width=_scaled_pen_radius(), color=color, batch=BATCH)
+    return pg.shapes.Line(
+        x1_scaled,
+        y1_scaled,
+        x2_scaled,
+        y2_scaled,
+        width=_scaled_pen_radius(),
+        color=color,
+        batch=BATCH,
+    )
 
 
 def line(x1: float, y1: float, x2: float, y2: float):
@@ -498,7 +653,10 @@ def line(x1: float, y1: float, x2: float, y2: float):
 
 
 def _scale_points(*points):
-    return (_scale_x(p) if i % 2 == 0 else _scale_y(p) for (i, p) in enumerate(points))
+    return (
+        _scale_x(p) if i % 2 == 0 else _scale_y(p)
+        for (i, p) in enumerate(points)
+    )
 
 
 @keep
@@ -506,7 +664,8 @@ def _scale_points(*points):
 def filled_polygon(*points):
     if len(points) % 2 != 0:
         raise ValueError(
-            "Invalid polygon: must provide an even number of points.")
+            "Invalid polygon: must provide an even number of points."
+        )
     zipped_points = zip(points[::2], points[1::2])
     return pg.shapes.Polygon(*zipped_points, color=color, batch=BATCH)
 
@@ -516,9 +675,16 @@ def filled_polygon(*points):
 def polygon(*points):
     if len(points) % 2 != 0:
         raise ValueError(
-            "Invalid polygon: must provide an even number of points.")
+            "Invalid polygon: must provide an even number of points."
+        )
     zipped_points = zip(points[::2], points[1::2])
-    return pg.shapes.MultiLine(*zipped_points, color=color, thickness=_scaled_pen_radius(), batch=BATCH, closed=True)
+    return pg.shapes.MultiLine(
+        *zipped_points,
+        color=color,
+        thickness=_scaled_pen_radius(),
+        batch=BATCH,
+        closed=True,
+    )
 
 
 @keep
@@ -526,28 +692,55 @@ def polygon(*points):
 def polyline(*points):
     if len(points) % 2 != 0:
         raise ValueError(
-            "Invalid polyline: must provide an even number of points.")
+            "Invalid polyline: must provide an even number of points."
+        )
     zipped_points = zip(points[::2], points[1::2])
-    return pg.shapes.MultiLine(*zipped_points, color=color, thickness=_scaled_pen_radius(), batch=BATCH, closed=False)
+    return pg.shapes.MultiLine(
+        *zipped_points,
+        color=color,
+        thickness=_scaled_pen_radius(),
+        batch=BATCH,
+        closed=False,
+    )
 
 
 @keep
-def text(x: float, y: float, s: str, angle: float = 0.0, orientation: str = "center") -> pg.text.Label:
+def text(
+    x: float, y: float, s: str, angle: float = 0.0, orientation: str = "center"
+) -> pg.text.Label:
     x_scaled = _scale_x(x)
     y_scaled = _scale_y(y)
-    return pg.text.Label(s, font_name=font.name, font_size=font.size, rotation=angle, x=x_scaled, y=y_scaled, color=color, batch=BATCH, anchor_x=orientation, anchor_y='center')
+    return pg.text.Label(
+        s,
+        font_name=font.name,
+        font_size=font.size,
+        rotation=angle,
+        x=x_scaled,
+        y=y_scaled,
+        color=color,
+        batch=BATCH,
+        anchor_x=orientation,
+        anchor_y="center",
+    )
 
 
 def text_left(x: float, y: float, s: str, angle: float = 0.0):
-    text(x, y, s, orientation='left')
+    text(x, y, s, orientation="left")
 
 
 def text_right(x: float, y: float, s: str, angle: float = 0.0):
-    text(x, y, s, orientation='right')
+    text(x, y, s, orientation="right")
 
 
 @keep
-def picture(x: float, y: float, filename: str, width: Optional[float] = None, height: Optional[float] = None, degrees: float = 0.0):
+def picture(
+    x: float,
+    y: float,
+    filename: str,
+    width: Optional[float] = None,
+    height: Optional[float] = None,
+    degrees: float = 0.0,
+):
     x_scaled = _scale_x(x)
     y_scaled = _scale_y(y)
     img = pg.image.load(filename)
@@ -570,11 +763,11 @@ def picture(x: float, y: float, filename: str, width: Optional[float] = None, he
 
 
 def mouse_x():
-    return _user_x(MOUSE_STATE['x'])
+    return _user_x(MOUSE_STATE["x"])
 
 
 def mouse_y():
-    return _user_y(MOUSE_STATE['y'])
+    return _user_y(MOUSE_STATE["y"])
 
 
 def mouse_pressed():
@@ -583,8 +776,7 @@ def mouse_pressed():
 
 def has_next_key_typed():
     """Return True if a key is currently being typed, False otherwise."""
-    KEYS_PRESSED = {k for k, v in KEY_STATE.data.items()
-                    if v and _printable(k)}
+    KEYS_PRESSED = {k for k, v in KEY_STATE.data.items() if v and _printable(k)}
     return len(KEYS_PRESSED) > 0
 
 
@@ -606,8 +798,9 @@ def next_key_typed():
     (Anything printable on a standard US keyboard.)
     Caps Lock will not have an effect on the output, but Shift will.
     """
-    char_code = {k for k, v in KEY_STATE.data.items()
-                 if v and _printable(k)}.pop()
+    char_code = {
+        k for k, v in KEY_STATE.data.items() if v and _printable(k)
+    }.pop()
     if KEY_STATE[LSHIFT] or KEY_STATE[RSHIFT]:
         return chr(char_code).upper()
     else:
