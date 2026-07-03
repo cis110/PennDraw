@@ -6,7 +6,7 @@ with open('README.md', 'r', encoding='utf-8') as f:
 
 setup(
     name='penndraw',
-    version='0.1.8',
+    version='0.1.9',
     author='Harry Smith',
     author_email='sharry@seas.upenn.edu',
     description='Drawing library for use at University of Pennsylvania (adapted from Princeton\'s StdDraw)',
