@@ -429,6 +429,160 @@ class FramerateTests(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# p5.js-style setup/draw + event-callback API tests
+# ---------------------------------------------------------------------------
+
+class CallbackAPITests(unittest.TestCase):
+
+    def setUp(self):
+        pd._reset()
+
+    def test_setup_decorator_registers_function(self):
+        def my_setup():
+            pass
+        pd.setup(my_setup)
+        self.assertIs(core._SETUP_FN, my_setup)
+
+    def test_draw_decorator_registers_function(self):
+        def my_draw():
+            pass
+        pd.draw(my_draw)
+        self.assertIs(core._DRAW_FN, my_draw)
+
+    def test_on_mouse_pressed_decorator_registers(self):
+        def handler(x, y):
+            pass
+        pd.on_mouse_pressed(handler)
+        self.assertIs(core._ON_MOUSE_PRESSED, handler)
+
+    def test_on_mouse_released_decorator_registers(self):
+        def handler(x, y):
+            pass
+        pd.on_mouse_released(handler)
+        self.assertIs(core._ON_MOUSE_RELEASED, handler)
+
+    def test_on_mouse_dragged_decorator_registers(self):
+        def handler(x, y):
+            pass
+        pd.on_mouse_dragged(handler)
+        self.assertIs(core._ON_MOUSE_DRAGGED, handler)
+
+    def test_on_mouse_moved_decorator_registers(self):
+        def handler(x, y):
+            pass
+        pd.on_mouse_moved(handler)
+        self.assertIs(core._ON_MOUSE_MOVED, handler)
+
+    def test_on_key_pressed_decorator_registers(self):
+        def handler(key):
+            pass
+        pd.on_key_pressed(handler)
+        self.assertIs(core._ON_KEY_PRESSED, handler)
+
+    def test_on_key_released_decorator_registers(self):
+        def handler(key):
+            pass
+        pd.on_key_released(handler)
+        self.assertIs(core._ON_KEY_RELEASED, handler)
+
+    def test_decorator_returns_function_unchanged(self):
+        def my_draw():
+            pass
+        result = pd.draw(my_draw)
+        self.assertIs(result, my_draw)
+
+    def test_decorator_overwrites_not_stacks(self):
+        calls = []
+        pd.on_mouse_pressed(lambda x, y: calls.append("first"))
+        pd.on_mouse_pressed(lambda x, y: calls.append("second"))
+        core._dispatch_mouse_press(100, 100, None, 0)
+        self.assertEqual(calls, ["second"])
+
+    def test_dispatch_mouse_press_transforms_coordinates(self):
+        received = []
+        pd.on_mouse_pressed(lambda x, y: received.append((x, y)))
+        core._dispatch_mouse_press(256, 128, None, 0)
+        self.assertAlmostEqual(received[0][0], core._user_x(256))
+        self.assertAlmostEqual(received[0][1], core._user_y(128))
+
+    def test_dispatch_mouse_release_transforms_coordinates(self):
+        received = []
+        pd.on_mouse_released(lambda x, y: received.append((x, y)))
+        core._dispatch_mouse_release(256, 128, None, 0)
+        self.assertAlmostEqual(received[0][0], core._user_x(256))
+        self.assertAlmostEqual(received[0][1], core._user_y(128))
+
+    def test_dispatch_mouse_drag_transforms_coordinates(self):
+        received = []
+        pd.on_mouse_dragged(lambda x, y: received.append((x, y)))
+        core._dispatch_mouse_drag(256, 128, 5, 5, None, 0)
+        self.assertAlmostEqual(received[0][0], core._user_x(256))
+        self.assertAlmostEqual(received[0][1], core._user_y(128))
+
+    def test_dispatch_mouse_motion_transforms_coordinates(self):
+        received = []
+        pd.on_mouse_moved(lambda x, y: received.append((x, y)))
+        core._dispatch_mouse_motion(256, 128, 5, 5)
+        self.assertAlmostEqual(received[0][0], core._user_x(256))
+        self.assertAlmostEqual(received[0][1], core._user_y(128))
+
+    def test_dispatch_mouse_press_noop_when_unregistered(self):
+        core._dispatch_mouse_press(0, 0, None, 0)  # should not raise
+
+    def test_dispatch_key_press_invokes_with_char(self):
+        received = []
+        pd.on_key_pressed(lambda k: received.append(k))
+        core._dispatch_key_press(ord('a'), 0)
+        self.assertEqual(received, ['a'])
+
+    def test_dispatch_key_release_invokes_with_char(self):
+        received = []
+        pd.on_key_released(lambda k: received.append(k))
+        core._dispatch_key_release(ord('b'), 0)
+        self.assertEqual(received, ['b'])
+
+    def test_dispatch_key_press_uppercases_with_shift_modifier(self):
+        received = []
+        pd.on_key_pressed(lambda k: received.append(k))
+        core._dispatch_key_press(ord('a'), pg.window.key.MOD_SHIFT)
+        self.assertEqual(received, ['A'])
+
+    def test_dispatch_key_press_skips_non_printable(self):
+        received = []
+        pd.on_key_pressed(lambda k: received.append(k))
+        core._dispatch_key_press(1, 0)
+        self.assertEqual(received, [])
+
+    def test_dispatch_key_press_noop_when_unregistered(self):
+        core._dispatch_key_press(ord('a'), 0)  # should not raise
+
+    def test_reset_clears_setup_and_draw(self):
+        pd.setup(lambda: None)
+        pd.draw(lambda: None)
+        pd._reset()
+        self.assertIsNone(core._SETUP_FN)
+        self.assertIsNone(core._DRAW_FN)
+
+    def test_reset_clears_mouse_callbacks(self):
+        pd.on_mouse_pressed(lambda x, y: None)
+        pd.on_mouse_released(lambda x, y: None)
+        pd.on_mouse_dragged(lambda x, y: None)
+        pd.on_mouse_moved(lambda x, y: None)
+        pd._reset()
+        self.assertIsNone(core._ON_MOUSE_PRESSED)
+        self.assertIsNone(core._ON_MOUSE_RELEASED)
+        self.assertIsNone(core._ON_MOUSE_DRAGGED)
+        self.assertIsNone(core._ON_MOUSE_MOVED)
+
+    def test_reset_clears_key_callbacks(self):
+        pd.on_key_pressed(lambda k: None)
+        pd.on_key_released(lambda k: None)
+        pd._reset()
+        self.assertIsNone(core._ON_KEY_PRESSED)
+        self.assertIsNone(core._ON_KEY_RELEASED)
+
+
+# ---------------------------------------------------------------------------
 # _reset() correctness tests
 # ---------------------------------------------------------------------------
 

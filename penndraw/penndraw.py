@@ -21,6 +21,15 @@ MOUSE_STATE = MouseStateHandler()
 KEY_STATE = KeyStateHandler()
 KEYS_PRESSED: set[int] = set()
 
+_SETUP_FN = None
+_DRAW_FN = None
+_ON_MOUSE_PRESSED = None
+_ON_MOUSE_RELEASED = None
+_ON_MOUSE_DRAGGED = None
+_ON_MOUSE_MOVED = None
+_ON_KEY_PRESSED = None
+_ON_KEY_RELEASED = None
+
 window.push_handlers(MOUSE_STATE)
 window.push_handlers(KEY_STATE)
 pg.gl.glClearColor(1.0, 1.0, 1.0, 1.0)
@@ -85,7 +94,14 @@ def on_draw():
 
 
 def run(animation=None):
-    pg.app.run()
+    if _DRAW_FN is not None:
+        if _SETUP_FN is not None:
+            _SETUP_FN()
+        while True:
+            _DRAW_FN()
+            advance()
+    else:
+        pg.app.run()
 
 
 def enable_animation(_framerate):
@@ -333,8 +349,19 @@ def _reset():
     """Reset all drawing state to defaults. Intended for use between tests."""
     global width, height, BATCH, VERTICES, color, pen_radius, framerate, font
     global _next_frame_deadline
+    global _SETUP_FN, _DRAW_FN
+    global _ON_MOUSE_PRESSED, _ON_MOUSE_RELEASED, _ON_MOUSE_DRAGGED, _ON_MOUSE_MOVED
+    global _ON_KEY_PRESSED, _ON_KEY_RELEASED
 
     _next_frame_deadline = 0.0
+    _SETUP_FN = None
+    _DRAW_FN = None
+    _ON_MOUSE_PRESSED = None
+    _ON_MOUSE_RELEASED = None
+    _ON_MOUSE_DRAGGED = None
+    _ON_MOUSE_MOVED = None
+    _ON_KEY_PRESSED = None
+    _ON_KEY_RELEASED = None
 
     for shape in VERTICES:
         shape.delete()
@@ -805,3 +832,104 @@ def next_key_typed():
         return chr(char_code).upper()
     else:
         return chr(char_code)
+
+
+# p5.js-style setup/draw + event-callback API.
+#
+# These decorators register a single callback per slot (last registration
+# wins), which run() and the dispatch functions below invoke. Purely
+# additive: scripts that never use these decorators see no behavior change.
+
+
+def setup(fn):
+    global _SETUP_FN
+    _SETUP_FN = fn
+    return fn
+
+
+def draw(fn):
+    global _DRAW_FN
+    _DRAW_FN = fn
+    return fn
+
+
+def on_mouse_pressed(fn):
+    global _ON_MOUSE_PRESSED
+    _ON_MOUSE_PRESSED = fn
+    return fn
+
+
+def on_mouse_released(fn):
+    global _ON_MOUSE_RELEASED
+    _ON_MOUSE_RELEASED = fn
+    return fn
+
+
+def on_mouse_dragged(fn):
+    global _ON_MOUSE_DRAGGED
+    _ON_MOUSE_DRAGGED = fn
+    return fn
+
+
+def on_mouse_moved(fn):
+    global _ON_MOUSE_MOVED
+    _ON_MOUSE_MOVED = fn
+    return fn
+
+
+def on_key_pressed(fn):
+    global _ON_KEY_PRESSED
+    _ON_KEY_PRESSED = fn
+    return fn
+
+
+def on_key_released(fn):
+    global _ON_KEY_RELEASED
+    _ON_KEY_RELEASED = fn
+    return fn
+
+
+def _dispatch_mouse_press(x, y, button, modifiers):
+    if _ON_MOUSE_PRESSED is not None:
+        _ON_MOUSE_PRESSED(_user_x(x), _user_y(y))
+
+
+def _dispatch_mouse_release(x, y, button, modifiers):
+    if _ON_MOUSE_RELEASED is not None:
+        _ON_MOUSE_RELEASED(_user_x(x), _user_y(y))
+
+
+def _dispatch_mouse_drag(x, y, dx, dy, buttons, modifiers):
+    if _ON_MOUSE_DRAGGED is not None:
+        _ON_MOUSE_DRAGGED(_user_x(x), _user_y(y))
+
+
+def _dispatch_mouse_motion(x, y, dx, dy):
+    if _ON_MOUSE_MOVED is not None:
+        _ON_MOUSE_MOVED(_user_x(x), _user_y(y))
+
+
+def _key_symbol_to_char(symbol, modifiers):
+    if modifiers & pg.window.key.MOD_SHIFT:
+        return chr(symbol).upper()
+    return chr(symbol)
+
+
+def _dispatch_key_press(symbol, modifiers):
+    if _ON_KEY_PRESSED is not None and _printable(symbol):
+        _ON_KEY_PRESSED(_key_symbol_to_char(symbol, modifiers))
+
+
+def _dispatch_key_release(symbol, modifiers):
+    if _ON_KEY_RELEASED is not None and _printable(symbol):
+        _ON_KEY_RELEASED(_key_symbol_to_char(symbol, modifiers))
+
+
+window.push_handlers(
+    on_mouse_press=_dispatch_mouse_press,
+    on_mouse_release=_dispatch_mouse_release,
+    on_mouse_drag=_dispatch_mouse_drag,
+    on_mouse_motion=_dispatch_mouse_motion,
+    on_key_press=_dispatch_key_press,
+    on_key_release=_dispatch_key_release,
+)
